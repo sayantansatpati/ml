@@ -379,7 +379,11 @@ def model_reg_cas():
          # Train the model using the training sets
         rf_cas.fit(X_C[train_index], Y_C[train_index])
 
-        predictions = rf_reg.predict(X_R[test_index]) + rf_cas.predict(X_C[test_index])
+
+        pred_reg = rf_reg.predict(X_R[test_index])
+        pred_cas = rf_cas.predict(X_C[test_index])
+
+        predictions = pred_reg + pred_cas
 
         # The mean square error
         sum_squares = np.mean((np.rint(predictions) - Y_COUNT[test_index]) ** 2)
