@@ -1,0 +1,170 @@
+=====DATSCIW261 ASSIGNMENT #1=====
+
+MIDS UC Berkeley, Machine Learning at Scale
+DATSCIW261 ASSIGNMENT #1
+
+---------------
+=== INSTRUCTIONS for SUBMISSIONS ===
+Follow the instructions for submissions carefully.
+
+
+=== Week 1 ASSIGNMENTS ===
+
+HW1.0.0. Define big data. Provide an example of a big data problem in your domain of expertise. 
+
+HW1.0.1.In 500 words (English or pseudo code or a combination) describe how to estimate the bias, the variance, the error for a test dataset T when using polynomial regression models of degree 1, 2,3, 4,5 are considered. How would you select a model?
+
+
+In the remainder of this assignment you will produce a spam filter
+that is backed by a multinomial naive Bayes classifier b (see http://nlp.stanford.edu/IR-book/html/htmledition/properties-of-naive-bayes-1.html),
+which counts words in parallel via 
+a unix, poor-man's map-reduce framework.
+
+For the sake of this assignment
+we will focus on the basic construction 
+of the parallelized classifier,
+and not consider its validation or calibration,
+and so you will have the classifier operate
+on its own training data (unlike a field application where one would use non-overlapping subsets for training, validation and testing).
+
+The data you will use is a curated subset of the Enron email corpus
+(whose details you may find in the file enronemail_README.txt 
+in the directory surrounding these instructions).
+
+=====Instructions/Goals=====
+
+In this directory you will also find starter code (pNaiveBayes.sh),
+(similar to the pGrepCount.sh code that was presented in this weeks lectures),
+which will be used as control script to a python mapper and reducer 
+that you will supply at several stages. Doing some exploratory data analysis you will see (with this very small dataset) the following\:
+> wc -l enronemail_1h.txt  #100 email records
+     100 enronemail_1h.txt
+> cut -f2 -d$'\t' enronemail_1h.txt|wc  #extract second field which is SPAM flag
+     101     394    3999
+JAMES-SHANAHANs-Desktop-Pro-2:HW1-Questions jshanahan$ cut -f2 -d$'\t' enronemail_1h.txt|head
+0
+0
+0
+0
+0
+0
+0
+0
+1
+1
+
+> head -n 100 enronemail_1h.txt|tail -1|less #an example SPAM email record
+018.2001-07-13.SA_and_HP       1        [ilug] we need your assistance to invest in your country        dear sir/madam,  i am well confident of your capability to assist me in  a transaction for mutual benefit of both parties, ie  (me and you) i am also believing that you will not  expose or betray the trust and confidence i am about  to establish with you. i have decided to contact you  with greatest delight and personal respect.  well, i am victor sankoh, son to mr. foday  sankoh  who was arrested by the ecomog peace keeping force  months ago in my country sierra leone. ….
+
+
+HW1.1. Read through the provided control script (pNaiveBayes.sh)
+   and all of its comments. When you are comfortable with their
+   purpose and function, respond to the remaining homework questions below. 
+   A simple cell in the notebook with a print statmement with  a "done" string will suffice here. (dont forget to include the Question Number and the quesition in the cell as a multiline comment!)
+
+HW1.2. Provide a mapper/reducer pair that, when executed by pNaiveBayes.sh
+   will determine the number of occurrences of a single, user-specified word. Examine the word “assistance” and report your results.
+
+
+   To do so, make sure that
+   
+   - mapper.py counts all occurrences of a single word, and
+   - reducer.py collates the counts of the single word.
+
+CROSSCHECK: >grep assistance enronemail_1h.txt|cut -d$'\t' -f4| grep assistance|wc -l
+       8
+
+HW1.3. Provide a mapper/reducer pair that, when executed by pNaiveBayes.sh
+   will classify the email messages by a single, user-specified word. Examine the word “assistance” and report your results. To do so, make sure that
+   
+   - mapper.py is same as in part (2), and
+   - reducer.py performs a single word Naive Bayes classification.
+
+HW1.4. Provide a mapper/reducer pair that, when executed by pNaiveBayes.sh
+   will classify the email messages by a list of one or more user-specified words. Examine the words “assistance”, “valium”, and “enlargementWithATypo” and report your results
+   To do so, make sure that
+
+   - mapper.py counts all occurrences of a list of words, and
+   - reducer.py performs the multiple-word Naive Bayes classification via the chosen list.
+
+
+
+HW1.5. Provide a mapper/reducer pair that, when executed by pNaiveBayes.sh
+   will classify the email messages by all words present.
+   To do so, make sure that
+
+   - mapper.py counts all occurrences of all words, and
+   - reducer.py performs a word-distribution-wide Naive Bayes classification.
+
+In all cases, mapper.py will read in a portion of the email data,
+count some words and print out counts to a file.
+
+While the utility of the reducer will change significantly 
+across steps, it will always be responsible for reading in 
+counts of words and collating data.
+
+In all cases you should apply a Laplace (add-1) smoothing to the classifier
+(always on the reducer side) to safeguard code against low-data.
+
+You will find in the starter code (pNaiveBayes.sh) that the basic
+operations (e.g., splitting the original data, scheduling the mappers, 
+waiting, running the reducer, and cleaning up the intermediate data files)
+are taken care of, and that the portion of this assignment left for you
+is in python and will involve regular expressions, counting with objects, 
+and some light math.
+
+For a quick reference on the construction of the classifier that you will code,
+please consult the "Document Classification" section of the following wikipedia page:
+
+https://en.wikipedia.org/wiki/Naive_Bayes_classifier#Document_classification
+
+the original paper by our curators of the Enron email data:
+
+http://www.aueb.gr/users/ion/docs/ceas2006_paper.pdf
+
+or the recording of this week's live lecture that you will find on the LMS.
+
+
+HW1.6 IS NEW as of 2015/09/03  
+
+HW1.6 Benchmark your code with the Python SciKit-Learn implementation of Naive Bayes
+
+It always a good idea to test your solutions against publicly available libraries such as SciKit-Learn, The Machine Learning toolkit available in Python. In this exercise, we benchmark ourselves against the SciKit-Learn implementation of Naive Bayes.  For more information on this implementation see: http://scikit-learn.org/stable/modules/naive_bayes.html more  
+
+Lets define  Training error = misclassification rate with respect to a training set. It is more formally defined here:
+
+Let DF represent the training set in the following:
+Err(Model, DF) = |{(X, c(X)) ∈ DF : c(X) != Model(x)}|   / |DF|
+
+Where || denotes set cardinality; c(X) denotes the class of the tuple X in DF; and Model(X) denotes the class inferred by the Model “Model”
+
+In this exercise, please complete the following:
+
+— Run the Multinomial Naive Bayes algorithm (using default settings) from SciKit-Learn over the same training data used in HW1.5 and report the Training error (please note some data preparation might be needed to get the Multinomial Naive Bayes algorithm from SkiKit-Learn to run over this dataset)
+— Run the Bernoulli Naive Bayes algorithm from SciKit-Learn (using default settings) over the same training data used in HW1.5 and report the Training error 
+— Run the Multinomial Naive Bayes algorithm you developed for HW1.5 over the same data used HW1.5 and report the Training error 
+- Please prepare a table to present your results
+— Explain/justify any differences in terms of training error rates over the dataset in HW1.5 between your Multinomial Naive Bayes implementation (in Map Reduce) versus the Multinomial Naive Bayes implementation in SciKit-Learn
+- Discuss the performance differences in terms of training error rates over the dataset in HW1.5 between the  Multinomial Naive Bayes implementation in SciKit-Learn with the  Bernoulli Naive Bayes implementation in SciKit-Learn
+
+
+
+=====Output=====
+
+In part (1), reducer.py should simply print out the word and its count (tab-delimited).
+
+In parts (2-4), reducer.py should print out the classification in the format:
+
+.
+.
+.
+ID (tab) TRUTH (tab) CLASS
+.
+.
+.
+
+where TRUTH is a binary value indicating SPAM or HAM (1 or 0, respectively),
+and CLASS is a binary value indicating your filter's classification (same coding).
+
+=====================
+END OF HOMEWORK
