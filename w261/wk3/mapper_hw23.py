@@ -47,7 +47,7 @@ for line in sys.stdin:
             w = strip_special_chars(w)
             
             # Add to category dict
-            word_counts[spam][w] = word_counts[spam].get(w, 0.0) + 1.0
+            word_counts[spam][w] = word_counts[spam].get(w, 0) + 1
                 
             # Vocab Unique
             vocab.add(w)
