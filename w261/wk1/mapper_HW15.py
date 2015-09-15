@@ -40,10 +40,7 @@ with open (filename, "r") as myfile:
             if not w:
                 continue
                 
-            if w not in wordCountDict:
-                wordCountDict[w] = 1
-            else:
-                wordCountDict[w] += 1
+            wordCountDict[w] = wordCountDict.get(w, 0) + 1
                 
         mapper_output_list.append((line_num, email[1], wordCountDict))
        

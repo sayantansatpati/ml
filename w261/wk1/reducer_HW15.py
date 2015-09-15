@@ -19,12 +19,10 @@ num_ham = 0
 
 cnt = 0
 # Calculate the totals in Reducer First Pass
-for file in sys.argv:
-    if cnt == 0:
-        cnt += 1
-        continue
+for file in sys.argv[1:]:
         
     with open (file, "r") as myfile:
+        print '[REDUCER] Processing File: {0}'.format(file)
         last_line_num = -1
         last_spam = -1
         
@@ -41,12 +39,8 @@ for file in sys.argv:
                 last_spam = spam
             
             # Add Vocab per line
-            if word not in vocab:
-                vocab[word] = 0.0
-            if word not in word_counts[str(spam)]:
-                word_counts[str(spam)][word] = 0.0
-            vocab[word] += count
-            word_counts[str(spam)][word] += count
+            vocab[word] = vocab.get(word, 0.0) + count
+            word_counts[str(spam)][word] = word_counts[str(spam)].get(word, 0.0) + count
                     
             if last_line_num != line_num:
                 if last_spam == 1:
@@ -84,34 +78,27 @@ ham_likelihood_denom = sum(word_counts['0'].values()) + len(vocab)
 
 # Calculate the Conditionals/Likelihood in Next Pass
 reducer_output_list = []
-cnt = 0
-for file in sys.argv:
-    if cnt == 0:
-        cnt += 1
-        continue
+for file in sys.argv[1:]:
         
     with open (file, "r") as myfile:
-        last_line_num = -1
+        print '[REDUCER] Processing File: {0}'.format(file)
+        last_line_num = None
+        last_spam = None
         log_prob_spam = 0
         log_prob_ham = 0
         
         for line in myfile:
-            
             tokens = re.split(r'\t+', line.strip())
             line_num = int(tokens[0])
             spam = int(tokens[1])
             word = tokens[2]
             count = int(tokens[3])
-            
-            # Init
-            if last_line_num == -1:
-                last_line_num = line_num
-            
+                        
             if last_line_num != line_num:
                 # Calculate the Naive Bayes Scores for Document Classification
                 spam_score = log_prob_spam + math.log(prior_spam)
                 ham_score = log_prob_ham + math.log(prior_ham)
-                reducer_output_list.append((spam, spam_score, ham_score))
+                reducer_output_list.append((last_spam, spam_score, ham_score))
                 # Reset log prob
                 log_prob_spam = 0
                 log_prob_ham = 0
@@ -122,7 +109,10 @@ for file in sys.argv:
                 log_prob_spam += math.log( spam_likelihood )
                 log_prob_ham += math.log( ham_likelihood )
             
+            # For Debug
+            #print '[{0}][{1}][{2}][{3}][{4}]'.format(file, last_line_num, line_num, log_prob_spam, log_prob_ham)
             last_line_num = line_num
+            last_spam = spam
             
         # Last Line
         spam_score = log_prob_spam + math.log(prior_spam)
