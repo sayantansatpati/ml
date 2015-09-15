@@ -25,7 +25,7 @@ for file in sys.argv:
         continue
         
     with open (file, "r") as myfile:
-        last_line_num = 0
+        last_line_num = -1
         last_spam = -1
         
         for line in myfile:
@@ -35,7 +35,8 @@ for file in sys.argv:
             word = tokens[2]
             count = float(tokens[3])
             
-            if last_line_num == 0:
+            # Init
+            if last_line_num == -1:
                 last_line_num = line_num
                 last_spam = spam
             
@@ -90,16 +91,21 @@ for file in sys.argv:
         continue
         
     with open (file, "r") as myfile:
-        last_line_num = 1
+        last_line_num = -1
         log_prob_spam = 0
         log_prob_ham = 0
         
         for line in myfile:
+            
             tokens = re.split(r'\t+', line.strip())
             line_num = int(tokens[0])
             spam = int(tokens[1])
             word = tokens[2]
             count = int(tokens[3])
+            
+            # Init
+            if last_line_num == -1:
+                last_line_num = line_num
             
             if last_line_num != line_num:
                 # Calculate the Naive Bayes Scores for Document Classification
@@ -127,13 +133,13 @@ total = 0.0
 miscat = 0.0
 for (spam, spam_score, ham_score) in reducer_output_list:
         total += 1.0
-        pred_class = 'SPAM'
-        if spam_score <= ham_score:
-            pred_class = 'HAM'
+        pred_class = 'HAM'
+        if spam_score > ham_score:
+            pred_class = 'SPAM'
         if (spam == 1 and pred_class == 'HAM') or (spam == 0 and pred_class == 'SPAM'):
             miscat += 1.0
             
         print "{0}\t{1}\t{2}\t{3}".format(spam, spam_score, ham_score, pred_class)
 
 error = miscat * 100 / total
-print "Accuracy: {0}, Error Rate: {1}".format((100 - error), error)
+print "Accuracy: {0}, Error Rate: {1}, # of Miscats: {2}".format((100 - error), error, miscat)
