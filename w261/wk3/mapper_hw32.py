@@ -19,7 +19,6 @@ for line in sys.stdin:
         for i in xrange(l):
             print '%s,*\t%d' %(items[i], 1)
             for j in xrange(i+1, l):
-               # Emit both (a,b) and (b,a)
                print '%s,%s\t%d' %(items[i], items[j], 1)
                print '%s,%s\t%d' %(items[j], items[i], 1)
     except Exception as e:
