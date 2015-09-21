@@ -1,8 +1,5 @@
 __author__ = 'ssatpati'
 
-
-__author__ = 'ssatpati'
-
 import re
 from fim import apriori
 
@@ -13,5 +10,6 @@ with open('ProductPurchaseData.txt', 'r') as f:
         items.sort()
         baskets.append(items)
 
-for r in apriori(baskets, target='r', supp= -100):
-    print r
+for r in apriori(baskets, target='r', zmax=2, supp= -100, report='c', eval='c', conf=90):
+    if r[0]:
+	print '%s\t%s\t%s' %(r[0],r[1],r[2])
