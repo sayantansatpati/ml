@@ -1,0 +1,116 @@
+=====DATSCIW261 ASSIGNMENT #4=====
+
+V1.Final 9/22/2015
+
+MIDS UC Berkeley, Machine Learning at Scale
+DATSCIW261 ASSIGNMENT #4
+
+---------------
+=== INSTRUCTIONS for SUBMISSIONS ===
+Please follow the instructions for submissions carefully.
+Note that all referenced files lile in the enclosing directory.
+
+=== Week 4 ASSIGNMENTS ===
+
+HW 4.0. 
+What is MrJob? How is it different to Hadoop MapReduce? 
+What are the mapper_final(), combiner_final(), reducer_final() methods? When are they called?
+
+HW 4.1
+What is serialization in the context of MrJob or Hadoop? 
+When it used in these frameworks? 
+What is the default serialization mode for input and outputs for MrJob? 
+
+HW 4.2: Recall the Microsoft logfiles data from the async lecture. The logfiles are described are located at:
+
+https://kdd.ics.uci.edu/databases/msweb/msweb.html
+http://archive.ics.uci.edu/ml/machine-learning-databases/anonymous/
+
+This dataset records which areas (Vroots) of www.microsoft.com each user visited in a one-week timeframe in Feburary 1998.
+
+ Here, you must preprocess the data on a single node (i.e., not on a cluster of nodes) from the format:
+
+C,"10001",10001   #Visitor id 10001
+V,1000,1          #Visit by Visitor 10001 to page id 1000
+V,1001,1          #Visit by Visitor 10001 to page id 1001
+V,1002,1          #Visit by Visitor 10001 to page id 1002
+C,"10002",10002   #Visitor id 10001
+V
+Note: #denotes comments
+to the format:
+
+V,1000,1,C, 10001
+V,1001,1,C, 10001
+V,1002,1,C, 10001
+
+Write the python code to accomplish this.
+
+HW 4.3: Find the 5 most frequently visited pages using mrjob from the output of 4.2 (i.e., transfromed log file).
+
+HW 4.4: Find the most frequent visitor of each page using mrjob and the output of 4.2  (i.e., transfromed log file). In this output please include the webpage URL, webpageID and Visitor ID.
+
+HW 4.5 Here you will use a different dataset consisting of word-frequency distributions 
+for 1,000 Twitter users. These Twitter users use language in very different ways,
+and were classified by hand according to the criteria:
+
+0: Human, where only basic human-human communication is observed.
+
+1: Cyborg, where language is primarily borrowed from other sources
+(e.g., jobs listings, classifieds postings, advertisements, etc...).
+
+2: Robot, where language is formulaically derived from unrelated sources
+(e.g., weather/seismology, police/fire event logs, etc...).
+
+3: Spammer, where language is replicated to high multiplicity
+(e.g., celebrity obsessions, personal promotion, etc... )
+
+Check out the preprints of our recent research,
+which spawned this dataset:
+
+http://arxiv.org/abs/1505.04342
+http://arxiv.org/abs/1508.01843
+
+The main data lie in the accompanying file:
+
+topUsers_Apr-Jul_2014_1000-words.txt
+
+and are of the form:
+
+USERID,CODE,TOTAL,WORD1_COUNT,WORD2_COUNT,...
+.
+.
+
+where
+
+USERID = unique user identifier
+CODE = 0/1/2/3 class code
+TOTAL = sum of the word counts
+
+Using this data, you will implement a 1000-dimensional K-means algorithm on the users
+by their 1000-dimensional word stripes/vectors using several 
+centroid initializations and values of K.
+
+Note that each "point" is a user as represented by 1000 words, and that
+word-frequency distributions are generally heavy-tailed power-laws
+(often called Zipf distributions), and are very rare in the larger class
+of discrete, random distributions. For each user you will have to normalize
+by its "TOTAL" column. Try several parameterizations and initializations:
+
+(A) K=4 uniform random centroid-distributions over the 1000 words
+(B) K=2 perturbation-centroids, randomly perturbed from the aggregated (user-wide) distribution 
+(C) K=4 perturbation-centroids, randomly perturbed from the aggregated (user-wide) distribution 
+(D) K=4 "trained" centroids, determined by the sums across the classes.
+
+and iterate until a threshold (try 0.001) is reached.
+After convergence, print out a summary of the classes present in each cluster.
+In particular, report the composition as measured by the total
+portion of each class type (0-3) contained in each cluster,
+and discuss your findings and any differences in outcomes across parts A-D.
+
+Note that you do not have to compute the aggregated distribution or the 
+class-aggregated distributions, which are rows in the auxiliary file:
+
+topUsers_Apr-Jul_2014_1000-words_summaries.txt
+
+=====================
+END OF HOMEWORK
