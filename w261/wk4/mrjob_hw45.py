@@ -1,7 +1,9 @@
 from numpy import argmin, array, random
 from mrjob.job import MRJob
-from mrjob.step import MRJobStep
+from mrjob.step import MRStep
+from mrjob.compat import get_jobconf_value 
 from itertools import chain
+import sys
 
 #Calculate find the nearest centroid for data point 
 def MinDist(datapoint, centroid_points):
@@ -27,16 +29,16 @@ def stop_criterion(centroid_points_old, centroid_points_new,T):
 
 class MRKmeans(MRJob):
     centroid_points=[]
-    #k=3    
+    #k=0    
     def steps(self):
         return [
-            MRJobStep(mapper_init = self.mapper_init, mapper=self.mapper,combiner = self.combiner,reducer=self.reducer)
+            MRStep(mapper_init = self.mapper_init, mapper=self.mapper,combiner = self.combiner,reducer=self.reducer)
                ]
     #load centroids info from file
     def mapper_init(self):
-        self.centroid_points = [map(float,s.split('\n')[0].split(',')) for s in open("centroids_1.txt").readlines()]
-        k = len(self.centroid_points)
-        open('centroids_1.txt', 'w').close()
+        self.centroid_points = [map(float,s.split('\n')[0].split(',')) for s in open("Centroids.txt").readlines()]
+        sys.stderr.write('[ERR] k(m_i) {0}\n'.format(get_jobconf_value('k')))
+        open('Centroids.txt', 'w').close()
     #load data and output the nearest centroid index and data point 
     def mapper(self, _, line):
         D = (map(float,line.split(',')))
@@ -44,6 +46,7 @@ class MRKmeans(MRJob):
         yield int(MinDist(D[3:],self.centroid_points)), (D[3:],1)
     #Combine sum of data points locally
     def combiner(self, idx, inputdata):
+        sys.stderr.write('[ERR] k(c) {0}\n'.format(get_jobconf_value('k')))
         '''
         sumx = sumy = num = 0
         for x,y,n in inputdata:
@@ -61,8 +64,12 @@ class MRKmeans(MRJob):
     #Aggregate sum for each cluster and then calculate the new centroids
     def reducer(self, idx, inputdata): 
         centroids = []
-        num = [0]*self.k 
-        for i in range(self.k):
+        k = int(get_jobconf_value('k'))
+        num = [0] * k
+        sys.stderr.write('[ERR] idx: {0}\n'.format(str(idx)))
+        sys.stderr.write('[ERR] k(r): {0}\n'.format(get_jobconf_value('k')))
+        sys.stderr.write('[ERR] num: {0}\n'.format(str(num)))
+        for i in range(k):
             #centroids.append([0,0])
             centroids.append([0 for i in xrange(1000)])
         '''
@@ -83,7 +90,7 @@ class MRKmeans(MRJob):
         for i in xrange(1000):
             centroids[idx][i] = centroids[idx][i]/num[idx]
             
-        with open('centroids_1.txt', 'a') as f:
+        with open('Centroids.txt', 'a') as f:
             f.writelines(",".join(centroids[idx]) + '\n')
         yield idx,(centroids[idx])
       
