@@ -41,18 +41,9 @@ class MRKmeans(MRJob):
     #load data and output the nearest centroid index and data point 
     def mapper(self, _, line):
         D = (map(float,line.split(',')))
-        #yield int(MinDist(D,self.centroid_points)), (D[0],D[1],1)
         yield int(MinDist(D[3:],self.centroid_points)), (D[3:],1)
     #Combine sum of data points locally
     def combiner(self, idx, inputdata):
-        '''
-        sumx = sumy = num = 0
-        for x,y,n in inputdata:
-            num = num + n
-            sumx = sumx + x
-            sumy = sumy + y
-        yield idx,(sumx,sumy,num)
-        '''
         num = 0
         sum_n = [0 for i in xrange(1000)]
         for d, n in inputdata:
@@ -65,19 +56,7 @@ class MRKmeans(MRJob):
         k = int(get_jobconf_value('k'))
         num = [0] * k
         for i in range(k):
-            #centroids.append([0,0])
             centroids.append([0 for i in xrange(1000)])
-        '''
-        for x, y, n in inputdata:
-            num[idx] = num[idx] + n
-            centroids[idx][0] = centroids[idx][0] + x
-            centroids[idx][1] = centroids[idx][1] + y
-        centroids[idx][0] = centroids[idx][0]/num[idx]
-        centroids[idx][1] = centroids[idx][1]/num[idx]
-        with open('Centroids.txt', 'a') as f:
-            f.writelines(str(centroids[idx][0]) + ',' + str(centroids[idx][1]) + '\n')
-        yield idx,(centroids[idx][0],centroids[idx][1])
-        '''
         for d, n in inputdata:
             num[idx] = num[idx] + n
             for i in xrange(1000):
@@ -87,7 +66,7 @@ class MRKmeans(MRJob):
        
         with open('Centroids.txt', 'a') as f:
             f.writelines(",".join(str(i) for i in centroids[idx]) + '\n')
-        yield idx,(centroids[idx], num[idx])
+        yield idx,(centroids[idx], num)
       
 if __name__ == '__main__':
     MRKmeans.run()
