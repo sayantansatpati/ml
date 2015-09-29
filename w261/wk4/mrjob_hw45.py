@@ -64,11 +64,9 @@ class MRKmeans(MRJob):
         centroids = []
         k = int(get_jobconf_value('k'))
         num = [0] * k
-        sys.stderr.write('[ERR] idx: {0}\n'.format(str(idx)))
         for i in range(k):
             #centroids.append([0,0])
             centroids.append([0 for i in xrange(1000)])
-        sys.stderr.write('[ERR] centroids: {0} {1}\n'.format(str(len(centroids)), str(len(centroids[0]))))
         '''
         for x, y, n in inputdata:
             num[idx] = num[idx] + n
@@ -89,7 +87,7 @@ class MRKmeans(MRJob):
        
         with open('Centroids.txt', 'a') as f:
             f.writelines(",".join(str(i) for i in centroids[idx]) + '\n')
-        yield idx,(centroids[idx])
+        yield idx,(centroids[idx], num[idx])
       
 if __name__ == '__main__':
     MRKmeans.run()
