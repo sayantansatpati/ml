@@ -28,6 +28,7 @@ class DistanceCalc(MRJob):
         for line in f.readlines():
             tokens = line.strip().split('\t')
             self.stripes[tokens[0].replace("\"","")] = ast.literal_eval(tokens[1])
+            self.increment_counter('distance', 'num_stripes_loaded', amount=1)
       
         sys.stderr.write('### of stripes: {0}'.format(len(self.stripes)))
 
@@ -53,7 +54,7 @@ class DistanceCalc(MRJob):
             for k in union_keys:
                 squared_distance += (dict_pairs.get(k, 0) - n_dict_pairs.get(k, 0)) ** 2
                 
-            self.increment_counter('distance', 'euclidean', amount=1)
+            self.increment_counter('distance', 'num_euclidean_distances', amount=1)
             yield math.sqrt(squared_distance), (key, n_key, 'E')
             
             # Calculate Cosine Distance
@@ -74,7 +75,7 @@ class DistanceCalc(MRJob):
                 
             cosine_dist = float(dot_x_y) / (math.sqrt(norm_x) * math.sqrt(norm_y))
                     
-            self.increment_counter('distance', 'consine', amount=1)
+            self.increment_counter('distance', 'num_cosine_distances', amount=1)
             yield cosine_dist, (key, n_key, 'C')
             
             if self.counter % 1000 == 0:
