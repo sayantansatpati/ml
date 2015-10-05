@@ -3,7 +3,6 @@ from mrjob.step import MRStep
 import re
 import sys
 import ast
-from sets import Set
 import urllib2
 import math
 
@@ -35,13 +34,13 @@ class DistanceCalc(MRJob):
         tokens = line.strip().split('\t')
         key = tokens[0].replace("\"","")
         dict_pairs = ast.literal_eval(tokens[1])
-        s1 = Set(dict_pairs.keys())
+        s1 = set(dict_pairs.keys())
         for n_key, n_dict_pairs in self.stripes.iteritems():
             # Do distance calc for only (a,b) but not (b,a) --> Redundant
             if key > n_key:
                 continue
                 
-            s2 = Set(n_dict_pairs.keys())
+            s2 = set(n_dict_pairs.keys())
             
             # Calculate Euclidean Distance
             # Get the union of keys from both stripes
