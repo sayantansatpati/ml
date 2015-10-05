@@ -22,6 +22,7 @@ class DistanceCalc(MRJob):
     
     def mapper_init(self):
         # Load the file into memory
+        self.counter = 0
         self.stripes = {}
         f = urllib2.urlopen("https://s3-us-west-2.amazonaws.com/ucb-mids-mls-sayantan-satpati/hw54/word_cooccur/frequent_stripes.txt")
         for line in f.readlines():
@@ -40,6 +41,8 @@ class DistanceCalc(MRJob):
             if key > n_key:
                 continue
                 
+            self.counter += 1
+                
             s2 = set(n_dict_pairs.keys())
             
             # Calculate Euclidean Distance
@@ -50,6 +53,7 @@ class DistanceCalc(MRJob):
             for k in union_keys:
                 squared_distance += (dict_pairs.get(k, 0) - n_dict_pairs.get(k, 0)) ** 2
                 
+            self.increment_counter('distance', 'euclidean', amount=1)
             yield math.sqrt(squared_distance), (key, n_key, 'E')
             
             # Calculate Cosine Distance
@@ -69,8 +73,12 @@ class DistanceCalc(MRJob):
                 norm_y += n_dict_pairs[k] * n_dict_pairs[k]
                 
             cosine_dist = float(dot_x_y) / (math.sqrt(norm_x) * math.sqrt(norm_y))
-                            
+                    
+            self.increment_counter('distance', 'consine', amount=1)
             yield cosine_dist, (key, n_key, 'C')
+            
+            if self.counter % 1000 == 0:
+                self.set_status('# of Distances Calculated: {0}'.format(self.counter))
 
 if __name__ == '__main__':
     DistanceCalc.run()
