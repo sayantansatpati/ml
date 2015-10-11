@@ -3,6 +3,7 @@ from mrjob.job import MRJob
 from mrjob.step import MRStep
 import re, sys
 import ast
+import math
 from mrjob.protocol import RawValueProtocol,JSONProtocol
 from itertools import combinations
 
@@ -14,6 +15,7 @@ class DistanceCalcInvertedIndex(MRJob):
                    reducer=self.reducer
                   ),
             MRStep(mapper=self.mapper_dist,
+                   combiner=self.combiner_dist,
                    reducer=self.reducer_dist
                   ),
             MRStep(mapper_init=self.mapper_top1k_init,
@@ -53,11 +55,33 @@ class DistanceCalcInvertedIndex(MRJob):
         for i in xrange(l):
             for j in xrange(l):
                 if j > i:
-                    yield (docId_counts[i][0], docId_counts[j][0]), (docId_counts[i][1] * docId_counts[j][1])
+                    x = docId_counts[i][1]
+                    y = docId_counts[j][1]
+                    yield (docId_counts[i][0], docId_counts[j][0]), (x*x, y*y, x*y)
+                    
+    
+    def combiner_dist(self, docId_pair, values):
+        dot_x_y = 0
+        x_squared = 0
+        y_squared = 0
+        for v in values:
+            x_squared += v[0]
+            y_squared += v[1]
+            dot_x_y += v[2]
+        
+        yield docId_pair, (x_squared, y_squared, dot_x_y) 
         
         
     def reducer_dist(self, docId_pair, values):
-        yield docId_pair, sum(values)
+        dot_x_y = 0
+        norm_x = 0
+        norm_y = 0
+        for v in values:
+            norm_x += v[0]
+            norm_y += v[1]
+            dot_x_y += v[2]
+        
+        yield docId_pair, float(dot_x_y) / (math.sqrt(norm_x) * math.sqrt(norm_y)) 
         
         
     # Step: 3
