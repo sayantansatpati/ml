@@ -8,6 +8,8 @@ from mrjob.protocol import RawValueProtocol,JSONProtocol
 from itertools import combinations
 
 class DistanceCalcInvertedIndex(MRJob):
+    
+    STOP_WORDS = [u'i', u'me', u'my', u'myself', u'we', u'our', u'ours', u'ourselves', u'you', u'your', u'yours', u'yourself', u'yourselves', u'he', u'him', u'his', u'himself', u'she', u'her', u'hers', u'herself', u'it', u'its', u'itself', u'they', u'them', u'their', u'theirs', u'themselves', u'what', u'which', u'who', u'whom', u'this', u'that', u'these', u'those', u'am', u'is', u'are', u'was', u'were', u'be', u'been', u'being', u'have', u'has', u'had', u'having', u'do', u'does', u'did', u'doing', u'a', u'an', u'the', u'and', u'but', u'if', u'or', u'because', u'as', u'until', u'while', u'of', u'at', u'by', u'for', u'with', u'about', u'against', u'between', u'into', u'through', u'during', u'before', u'after', u'above', u'below', u'to', u'from', u'up', u'down', u'in', u'out', u'on', u'off', u'over', u'under', u'again', u'further', u'then', u'once', u'here', u'there', u'when', u'where', u'why', u'how', u'all', u'any', u'both', u'each', u'few', u'more', u'most', u'other', u'some', u'such', u'no', u'nor', u'not', u'only', u'own', u'same', u'so', u'than', u'too', u'very', u's', u't', u'can', u'will', u'just', u'don', u'should', u'now']
         
     def steps(self):
         return [
@@ -15,7 +17,6 @@ class DistanceCalcInvertedIndex(MRJob):
                    reducer=self.reducer
                   ),
             MRStep(mapper=self.mapper_dist,
-                   combiner=self.combiner_dist,
                    reducer=self.reducer_dist
                   ),
             MRStep(mapper_init=self.mapper_top1k_init,
@@ -31,6 +32,7 @@ class DistanceCalcInvertedIndex(MRJob):
                             }
                   )
         ]
+        
 
     # Step:1
     def mapper(self, _, line):
@@ -39,8 +41,12 @@ class DistanceCalcInvertedIndex(MRJob):
         docId = tokens[0].replace("\"","")
         stripe = ast.literal_eval(tokens[1])
         
-        for word,cnt in stripe.iteritems():
-            yield word, (docId, int(cnt))
+        # Normalize & Round to 3
+        if docId.lower() not in self.STOP_WORDS:
+            total_cnt = sum(stripe.values())
+            for word,cnt in stripe.iteritems():
+                if word.lower() not in self.STOP_WORDS:
+                    yield word, (docId, round(float(cnt)/total_cnt,5))
     
     def reducer(self, word, docId_count):
         docId_counts = [i for i in docId_count]
@@ -52,36 +58,21 @@ class DistanceCalcInvertedIndex(MRJob):
         #sys.stderr.write('{0} # {1}\n'.format(key, docId_counts))
         docId_counts = sorted(docId_counts)
         l = len(docId_counts)
-        for i in xrange(l):
-            for j in xrange(l):
-                if j > i:
-                    x = docId_counts[i][1]
-                    y = docId_counts[j][1]
-                    yield (docId_counts[i][0], docId_counts[j][0]), (x*x, y*y, x*y)
-                    
+        if l < 7000:
+            for i in xrange(l):
+                for j in xrange(l):
+                    if j > i:
+                        x = docId_counts[i][1]
+                        y = docId_counts[j][1]
+                        yield (docId_counts[i][0], docId_counts[j][0]), round((docId_counts[i][1] * docId_counts[j][1]),5)
+    
     
     def combiner_dist(self, docId_pair, values):
-        dot_x_y = 0
-        x_squared = 0
-        y_squared = 0
-        for v in values:
-            x_squared += v[0]
-            y_squared += v[1]
-            dot_x_y += v[2]
-        
-        yield docId_pair, (x_squared, y_squared, dot_x_y) 
+        yield docId_pair, round(sum(values),5)
         
         
     def reducer_dist(self, docId_pair, values):
-        dot_x_y = 0
-        norm_x = 0
-        norm_y = 0
-        for v in values:
-            norm_x += v[0]
-            norm_y += v[1]
-            dot_x_y += v[2]
-        
-        yield docId_pair, float(dot_x_y) / (math.sqrt(norm_x) * math.sqrt(norm_y)) 
+        yield docId_pair, round(sum(values),5)
         
         
     # Step: 3
