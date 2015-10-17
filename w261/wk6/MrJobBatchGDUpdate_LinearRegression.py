@@ -20,7 +20,9 @@ class MrJobBatchGDUpdate_LinearRegression(MRJob):
         # y_hat is the predicted value given current weights
         y_hat = self.weights[0]+self.weights[1]*D[1]
         # Update parial gradient vector with gradient form current example
-        self.partial_Gradient =  [self.partial_Gradient[0]+ D[0]-y_hat, self.partial_Gradient[1]+(D[0]-y_hat)*D[1]]
+        # Weight for Weighted Linear Regression
+        w = abs(1.0/D[1])
+        self.partial_Gradient =  [self.partial_Gradient[0]+ (D[0]-y_hat)*w, self.partial_Gradient[1]+(D[0]-y_hat)*D[1]*w]
         self.partial_count = self.partial_count + 1
         #yield None, (D[0]-y_hat,(D[0]-y_hat)*D[1],1)
     
