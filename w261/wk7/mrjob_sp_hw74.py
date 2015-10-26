@@ -45,7 +45,6 @@ class ShortestPath_AWS(MRJob):
                 # Open/Emit Frontiers
                 for k,v in neighbors.iteritems():
                     self.increment_counter('graph', 'frontiers', amount=1)
-                    self.increment_counter('graph', 'links', amount=1)
                     yield k, self.val1('NULL',v,node,k,'Q')
             else:
                 # Rest Passthrough
@@ -67,11 +66,11 @@ class ShortestPath_AWS(MRJob):
                 if node == self.stop_node:
                     self.increment_counter('graph', 'action_stop', amount=1)
                 
-                # Open/Emit Frontiers if NOT Visited
-                for k,v in neighbors.iteritems():
-                    self.increment_counter('graph', 'frontiers', amount=1)
-                    self.increment_counter('graph', 'links', amount=1)
-                    yield k, self.val1('NULL', int(dist) + int(v), path, k,'Q')
+                if neighbors and len(neighbors) > 0:
+                    # Open/Emit Frontiers if NOT Visited
+                    for k,v in neighbors.iteritems():
+                        self.increment_counter('graph', 'frontiers', amount=1)
+                        yield k, self.val1('NULL', int(dist) + int(v), path, k,'Q')
             else:
                 yield t[0], t[1] # Passthrough (Rest)
             
