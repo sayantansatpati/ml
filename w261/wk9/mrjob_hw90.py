@@ -14,7 +14,7 @@ Sample Input Data:
 5	0.2,[1,2,3]
 '''
 
-class PageRank(MRJob):
+class PageRankFirstVersion(MRJob):
     
     INPUT_PROTOCOL = RawProtocol
     
@@ -75,4 +75,4 @@ class PageRank(MRJob):
 
    
 if __name__ == '__main__':
-    PageRank.run()
+    PageRankFirstVersion.run()

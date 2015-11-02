@@ -4,58 +4,83 @@ from mrjob.protocol import RawProtocol
 from mrjob.compat import get_jobconf_value
 import sys
 import ast
+from numpy import log1p, exp, log
+
+## A function to sum log probabilities
+def sum_log(p, q):
+    if q > p:
+        b = log(q)
+        if p == 0:
+            return exp(b + log1p(0))
+        else:
+            a = log(p)
+            return exp(b + log1p(exp(a-b)))
+    else:
+        if q == 0:
+            if p == 0:
+                return 0.
+            else:
+                a = log(p)
+                return exp(a + log1p(0))
+        else:
+            b = log(q)
+            a = log(p)
+            return exp(a + log1p(exp(b-a)))
 
 
-class PageRank1(MRJob):
+class PageRank(MRJob):
     
     INPUT_PROTOCOL = RawProtocol
     
     def steps(self):
         return [
             MRStep(mapper=self.mapper,
-                  reducer=self.reducer)
+                  reducer=self.reducer),
+            MRStep(mapper_init=self.mapper_dangling_init,
+                mapper=self.mapper_dangling)
         ]
     
 
     def mapper(self, key, value):
         nodes = int(get_jobconf_value('nodes'))
+        i = int(get_jobconf_value('iteration'))
         #sys.stderr.write('[M] {0}, {1} \n'.format(key, value))
         key = key.replace("\"","")
         key = key.replace("\\","")
-        neighbors = ast.literal_eval(value)
-        
+        adj_list = ast.literal_eval(value)
+      
         score = 0
         l = 0
-        if 'score' in neighbors.keys():
-            score = neighbors['score']
-            l = len(neighbors) - 1
-
-            if l == 0: # Only 'score' & no neighbors (Start Accumulating Mass)
-                sys.stderr.write('[M] "DANGLING" | {0} | {1}\n'.format(key, score))
-                self.increment_counter('page_rank', 'dangling_mass', amount= int(score * 1000))
-        else: # First iteration ('score' not yet part of the dicionary!)
-            # Start with uniform distribution
-            score = 1.0 / nodes
-            neighbors['score'] = score
-            l = len(neighbors)
-            
-        # Emit the Graph Structure
-        yield key, ('NODE', neighbors)
         
-        # Emit the mass
-        for n in neighbors:
-            if n != 'score':
-                if n == 'A':
-                    sys.stderr.write('[M1] A | {0} | {1} | {2}\n'.format(n, score, neighbors))
-                yield n, ('SCORE', float(score)/l)
-                   
-        #self.increment_counter('page_rank', 'dangling_node', amount=1)
+        if 'score' in adj_list.keys():
+            # Previous Mass/Page Rank
+            score = adj_list['score']
+            l = len(adj_list) - 1
+        else: # First iteration ('score' not yet part of the adjacency list!)
+            # Start with uniform probability distribution
+            score = 1.0 / nodes
+            l = len(adj_list)
+            adj_list['score'] = score
             
+        if l == 0: # Only 'score' & no out links [Dangling!]
+            sys.stderr.write('[{0}][M] "DANGLING MASS" | {1} | {2}\n'.format(i, key, score))
+            # Emit using a special key; Accumlate in Reducer;Distribute in the next MRJob
+            yield 'DANGLING', ('SCORE', score)
+       
+        # Emit the Graph Structure
+        yield key, ('GRAPH', adj_list)
+                    
+        # Emit the new Mass/Page Rank
+        for n in adj_list:
+            if n != 'score':
+                yield n, ('SCORE', score/l)
+                               
     def combiner(self, key, values):
         pass
 
         
-    def reducer(self, key, values):        
+    def reducer(self, key, values):     
+        i = int(get_jobconf_value('iteration'))
         teleportation = float(get_jobconf_value('teleportation'))
         nodes = int(get_jobconf_value('nodes'))
         
@@ -63,29 +88,63 @@ class PageRank1(MRJob):
         total_score = 0
 
         for value_type, value in values:
-            if key == 'A':
-                sys.stderr.write('[R1] {0} | {1} | {2}\n'.format(key, value_type, value))
-            if value_type == 'NODE':
+            if value_type == 'GRAPH':
                 adj_list = value
             else:
                 assert value_type == 'SCORE'
                 total_score += value
+                #total_score = sum_log(total_score, value)
                 
-        # Update the score
-        if adj_list:
-            # Account for teleportation
-            total_score = teleportation / nodes + (1 - teleportation) * total_score
-            adj_list['score'] = total_score
-            yield key, adj_list
+        # Special Key
+        if key == 'DANGLING':
+            # Write accumulated Dangling Score in a file
+            with open('/Users/ssatpati/0-DATASCIENCE/DEV/github/ml/w261/wk9/dangling.txt', 'w') as f:
+                f.write('DANGLING\t{0}\n'.format(total_score))
         else:
-            # Accumulate the mass from dangling nodes (First Time Only)
-            sys.stderr.write('[R1] "DANGLING" | {0} | {1}\n'.format(key, value))
-            adj_list = {'score': total_score}
+            #total_score = (teleportation / nodes) + ((1 - teleportation) * total_score)
+            #total_score = sum_log((teleportation / nodes), ((1 - teleportation) * total_score))
+            if adj_list:
+                adj_list['score'] = total_score
+            else:
+                adj_list = {'score': total_score}
+    
+            #sys.stderr.write('[R2] {0} | {1} | {2}\n\n'.format(key, total_score, adj_list))
             yield key, adj_list
+       
+
+    def mapper_dangling_init(self):
+        i = int(get_jobconf_value('iteration'))
+        self.dangling_mass = 0
+        f_dangling = '/Users/ssatpati/0-DATASCIENCE/DEV/github/ml/w261/wk9/dangling.txt'
+        try:
+            with open(f_dangling, 'r') as f:
+                l = f.readlines()
+                if l:
+                    self.dangling_mass = float(l[0].split('\t')[1])
+            open(f_dangling, 'w').close()
+        except Exception as e:
+            pass
+        sys.stderr.write('[{0}][M_D] DANGLING MASS: {1}\n'.format(i, self.dangling_mass))
         
-        #sys.stderr.write('[R2] {0} | {1} | {2}\n\n'.format(key, total_score, adj_list))
+    def mapper_dangling(self, key, value):
+        #sys.stderr.write('[M_D] {0}, {1} \n'.format(key, value))
+        i = int(get_jobconf_value('iteration'))
+        key = key.replace("\"","")
+        key = key.replace("\\","")
+        adj_list = ast.literal_eval(str(value))
+        
+        if self.dangling_mass > 0:
+            nodes = int(get_jobconf_value('nodes'))
+            teleportation = float(get_jobconf_value('teleportation'))
+            score = adj_list['score']
+            modified_score = (teleportation / nodes) + (1 - teleportation) * ((self.dangling_mass / nodes) + score)
+            #modified_score = sum_log((teleportation / nodes), (1 - teleportation)*(self.dangling_mass / nodes))
+            #modified_score = sum_log(modified_score, (1 - teleportation)*score)
+            adj_list['score'] = modified_score
+            
+        yield key, adj_list
         
 
    
 if __name__ == '__main__':
-    PageRank1.run()
+    PageRank.run()
