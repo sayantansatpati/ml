@@ -20,21 +20,25 @@ def preproc(t):
     return l
 
 def contributions(t):
-    l = [(t[0], 0)]
-    w = t[1][1]
     adj_list = t[1][0]
-    key = None
+    w = t[1][1]
+    
+    # Emit the Graph/AdjList
+    l = [(t[0], (adj_list, 0))]
+    
+    #Emit the Weights
     if len(adj_list) == 0:
-        l.append(('DANGLING', w))
+        l.append(('DANGLING', ([], w)))
     else:
         for n in adj_list:
-            l.append((n, w/len(adj_list)))
+            l.append((n, ([], w/len(adj_list))))
     return l
 
 def page_rank(t, n, dangling_mass, tp=0.15):
-    w = t[1]
+    adj_list = t[1][0]
+    w = t[1][1]
     w = (tp / n) + (1 - tp) * ((dangling_mass/n) + w)
-    return (t[0], w)
+    return (t[0], (adj_list, w))
 
 if __name__ == '__main__':
     sys.stderr.write('\nNumber of arguments: {0}'.format(len(sys.argv)))
@@ -50,24 +54,32 @@ if __name__ == '__main__':
     
     lines = sc.textFile(sys.argv[1]).map(parse_line)
 
-    links = lines.flatMap(preproc).reduceByKey(lambda x, y: x + y).cache()
-    n = links.count()
+    pr = lines.flatMap(preproc).reduceByKey(lambda x, y: x + y)
+    n = pr.count()
     
-    ranks = links.map(lambda x: (x[0], float(1)/n))
-
-    sum_partial_diff_PR = float('inf')
+    pr = pr.map(lambda x: (x[0],(x[1], float(1)/n)))
+    
+    pprint.pprint(pr.collect())
+    
     cnt = 1
-
+    
+    
     #while sum_partial_diff_PR > .005:
     while cnt <= int(sys.argv[3]):
-        contribs = links.join(ranks).flatMap(contributions).reduceByKey(lambda x, y: x + y).cache()
-        dangling_mass = contribs.lookup('DANGLING')
-        ranks_updated = contribs.filter(lambda x: x[0] != 'DANGLING').map(lambda x: page_rank(x, n, dangling_mass[0]))
-        sys.stderr.write('\n[Iteration: {0}] Dangling Mass: {1}'.format(cnt, dangling_mass[0]))
+        contribs = pr.flatMap(contributions).reduceByKey(lambda x, y: (x[0] + y[0], x[1] + y[1]))        
+        #print '\n'
+        #pprint.pprint(contribs.collect())
+        dangling_mass = contribs.filter(lambda x: x[0] == 'DANGLING').collectAsMap()['DANGLING'][1]
+        sys.stderr.write('\n[{0}] Dangling Mass: {1}'.format(cnt, dangling_mass))
+        pr = contribs.filter(lambda x: x[0] != 'DANGLING').map(lambda x: page_rank(x, n, dangling_mass))        
+        #print '\n'
+        #pprint.pprint(contribs.collect())
         
-        ranks = ranks_updated
         cnt += 1
-
-    sc.parallelize(ranks.map(lambda x: (x[0],round(x[1],3))).takeOrdered(3, key=lambda x: -x[1])).saveAsTextFile(sys.argv[2])
+    
+    print '\n'
+    pprint.pprint(pr.sortByKey().collect())
+    sc.parallelize(pr.map(lambda x: (x[0],(x[1][0], round(x[1][1],3))))
+                        .takeOrdered(3, key=lambda x: -x[1][1])).saveAsTextFile(sys.argv[2])
     
     sc.stop()
