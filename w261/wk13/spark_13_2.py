@@ -56,10 +56,9 @@ if __name__ == '__main__':
 
     pr = lines.flatMap(preproc).reduceByKey(lambda x, y: x + y)
     n = pr.count()
-    
     pr = pr.map(lambda x: (x[0],(x[1], float(1)/n)))
     
-    pprint.pprint(pr.collect())
+    #pprint.pprint(pr.collect())
     
     cnt = 1
     
@@ -78,8 +77,9 @@ if __name__ == '__main__':
         cnt += 1
     
     print '\n'
-    pprint.pprint(pr.sortByKey().collect())
+    
+    #pprint.pprint(pr.sortByKey().collect())
     sc.parallelize(pr.map(lambda x: (x[0],(x[1][0], round(x[1][1],3))))
-                        .takeOrdered(3, key=lambda x: -x[1][1])).saveAsTextFile(sys.argv[2])
+                        .takeOrdered(100, key=lambda x: -x[1][1])).saveAsTextFile(sys.argv[2])
     
     sc.stop()
