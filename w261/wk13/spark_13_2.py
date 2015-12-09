@@ -1,6 +1,7 @@
 import ast
 import pprint
 import sys
+from math import log, exp, log1p
 from pyspark import SparkContext
 from pyspark import SparkConf
 
@@ -24,20 +25,29 @@ def contributions(t):
     w = t[1][1]
     
     # Emit the Graph/AdjList
-    l = [(t[0], (adj_list, 0))]
+    l = [(t[0], (adj_list, 0.0))]
     
     #Emit the Weights
     if len(adj_list) == 0:
         l.append(('DANGLING', ([], w)))
     else:
         for n in adj_list:
-            l.append((n, ([], w/len(adj_list))))
+            l.append((n, ([], float(w)/len(adj_list))))
     return l
 
-def page_rank(t, n, dangling_mass, tp=0.15):
+def page_rank(t, n, dangling_mass, LH, RH):
     adj_list = t[1][0]
     w = t[1][1]
-    w = (tp / n) + (1 - tp) * ((dangling_mass/n) + w)
+    
+    # w = (tp / n) + (1 - tp) * ((dangling_mass/n) + w)
+    # OR
+    # w = (tp / n) + ((1 - tp)/n) * (dangling_mass + wn)
+    # OR
+    # w = LH + RH * (dangling_mass + wn)
+    # OR
+    # w = LH + exp(log(RH) + log(dangling_mass + wn))
+    
+    w = LH + exp(log(RH) + log(dangling_mass + w * n))
     return (t[0], (adj_list, w))
 
 if __name__ == '__main__':
@@ -60,6 +70,11 @@ if __name__ == '__main__':
     
     #pprint.pprint(pr.collect())
     
+    #Teleportation & Damping Factor (Calculate & Pass)
+    tp=0.15
+    LH = tp / n
+    RH = (1 - tp) / n
+    sys.stderr.write('### Teleportation: {0}, LH: {1}, RH: {2}'.format(tp, LH, RH))
     cnt = 1
     
     
@@ -70,7 +85,7 @@ if __name__ == '__main__':
         #pprint.pprint(contribs.collect())
         dangling_mass = contribs.filter(lambda x: x[0] == 'DANGLING').collectAsMap()['DANGLING'][1]
         sys.stderr.write('\n[{0}] Dangling Mass: {1}'.format(cnt, dangling_mass))
-        pr = contribs.filter(lambda x: x[0] != 'DANGLING').map(lambda x: page_rank(x, n, dangling_mass))        
+        pr = contribs.filter(lambda x: x[0] != 'DANGLING').map(lambda x: page_rank(x, n, dangling_mass, LH, RH))   
         #print '\n'
         #pprint.pprint(contribs.collect())
         
@@ -79,7 +94,7 @@ if __name__ == '__main__':
     print '\n'
     
     #pprint.pprint(pr.sortByKey().collect())
-    sc.parallelize(pr.map(lambda x: (x[0],(x[1][0], round(x[1][1],3))))
+    sc.parallelize(pr.map(lambda x: (x[0],(x[1][0], x[1][1])))
                         .takeOrdered(100, key=lambda x: -x[1][1])).saveAsTextFile(sys.argv[2])
     
     sc.stop()
