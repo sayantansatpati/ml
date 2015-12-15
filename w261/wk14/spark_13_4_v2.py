@@ -138,7 +138,7 @@ def metrics(model, data, label):
                             (lp.label, getP(lp.features, model0.weights, model0.intercept)))
     
     metrics = BinaryClassificationMetrics(labelsAndScores)
-    log_loss = evaluateResults(model0, OHETrainData)
+    log_loss = evaluateResults(model0, data)
     auc = metrics.areaUnderROC
     sys.stderr.write('\n [{0}] LogLoss: {1}'.format(label, log_loss))
     sys.stderr.write('\n [{0}] AUC: {1}\n'.format(label, auc))
@@ -169,7 +169,7 @@ if __name__ == '__main__':
                      .map(lambda x: x.replace('\t', ',')) \
                      .map(lambda point: parseHashPoint(point, numBucketsCTR)).cache()
     
-    print '\n', OHETrainData.take(3)
+    #print '\n', OHETrainData.take(3)
     
     # fixed hyperparameters
     numIters = 50

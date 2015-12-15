@@ -138,7 +138,7 @@ def metrics(model, data, label):
                             (lp.label, getP(lp.features, model0.weights, model0.intercept)))
     
     metrics = BinaryClassificationMetrics(labelsAndScores)
-    log_loss = evaluateResults(model0, OHETrainData)
+    log_loss = evaluateResults(model0, data)
     auc = metrics.areaUnderROC
     sys.stderr.write('\n [{0}] LogLoss: {1}'.format(label, log_loss))
     sys.stderr.write('\n [{0}] AUC: {1}\n'.format(label, auc))
@@ -158,10 +158,10 @@ if __name__ == '__main__':
     sc = SparkContext(appName="Logistic Regression")
         
     # Tune hyperparameters
-    buckets = [1000, 5000, 10000, 15000, 20000]
+    buckets = [1000, 5000]
     numIters = 50
-    stepSize = [1,5,10,15,20]
-    regParam = [1e-3,1e-6,1e-9]
+    stepSize = [1,5]
+    regParam = [1e-3,1e-6]
     regType = 'l2'
     includeIntercept = True
     
