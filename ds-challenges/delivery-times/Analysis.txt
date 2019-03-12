@@ -1,0 +1,122 @@
+The purpose of this document is to explain the approaches that were taken to predict the delivery time in secs for
+the dataset provided as a part of this challenge.
+
+Files: Inside zipped folder
+delivery-time-prediction.ipynb: Jupyter Notebook for Data Analysis, Processing, and Modeling
+delivery-time-prediction.html: HTML version of the above notebook
+
+delivery-app/app.py: Entry point to application. Expects data_to_predict.json as input
+delivery-app/featurestore.py: Feature Transformation
+delivery-app/prediction.py: Test Data Transformation and predictions
+
+delivery-app/gbdt_delovery_time_v1.joblib: Model 1
+delivery-app/gbdt_delovery_time_v2.joblib: Model 2
+
+Output:
+delivery-app/delivery_time_sec_predictions.csv: Output File with predictions
+delivery-app/console-log.txt: Console log from the app
+
+Tech Stack: Python 3.6, Pandas, NumPy, Anaconda, Sklearn, Jupyter
+
+############
+Problem - 1
+############
+
+Steps:
+1. Load Data
+
+2. Pre-Processing and Feature Engineering Part-1
+a. Convert the datetime from UTC to PST
+b. Create following additional features:
+delivery_time_secs (Target)
+Using the 'created-at' following features were created:
+hour
+day of week
+hour_0_6
+hour_6_11
+hour_11_15
+hour_15_18
+hour_18_23
+avg_price_item
+avg_price_distinct_item
+
+3. Handle missing values
+a. market-id: a new market-id=99 was created for NA records
+b. store_primary_category: missing values were assigned to 'others'. Categorical Variable was created from this.
+c. order_protocol: a new order-protocol=99 was created for NA records
+d. total_onshift_dashers, total_busy_dashers, total_outstanding_orders: These were set to 0
+Another approach could have been to find average dashers for that market, store, day of week, hour, but the input data
+was found to be sparse.
+e. estimated_store_to_consumer_driving_duration: These were set to 0 in the first model. And in the 2nd one, it was
+replaced by avg estimated_store_to_consumer_driving_duration for the store (or market if store is not found)
+
+4. Modeling
+
+Gradient Boosted Decision Trees have been used for modeling. GBDT doesn't need input data to be scaled, and can handle
+categorical variables out of the box.
+
+GridSearchCV was used for hyper parameter tuning and cross validation (CV=5 was used)
+There is scope for further tuning the model. In the interest of time the following params were tried:
+
+param_grid = {
+        'n_estimators': [100, 200],
+        'min_samples_split': [200, 500],
+        'min_samples_leaf': [50, 100],
+        'max_depth': [5,6,7]
+    }
+
+What worked best was (This is what is there in the notebook):
+param_grid = {
+        'n_estimators': [200],
+        'min_samples_split': [500],
+        'min_samples_leaf': [100],
+        'max_depth': [7]
+    }
+
+The optimization function was RMSE.
+
+Target was log scaled which handled outliers better, and gave a much better performance in terms of RMSE.
+
+a. Approach 1:
+The features mentioned above were used. The importance list is in the notebook
+Training was done on randomly shuffled 75% of the records
+Evaluation was carried on the 25% of the records
+
+b. Approach 2:
+Data was sorted based on created-at.
+Training set: First 90% of the records
+Test set: Rest 10%
+
+Additional feature engineering was done to create aggregate feature maps using Training Set.
+Feature Engineering Part-2
+avg_delivery_time_market
+avg_delivery_time_store
+avg_delivery_time_market_dow
+avg_delivery_time_store_dow
+avg_delivery_time_market_hour
+avg_delivery_time_store_hour
+avg_delivery_time_market_dow_hour
+avg_delivery_time_store_dow_hour
+
+These new features were then added to both training/test set.
+
+Additionally, estimated_store_to_consumer_driving_duration was filled using
+avg estimated_store_to_consumer_driving_duration at store (or market level)
+
+This model did better in than the previous one in terms of RMSE.
+avg_delivery_time_store_dow was the top ranking important feature, compared the first model, where feature importance
+was more of spread out across a number of features.
+
+############
+Problem - 2
+############
+
+A rudimentary app was created to use the model(s) created above and dump the predictions in a file.
+Both models were used to create predictions, but model-1 provided much better looking predictions with a variance
+similar to how the target variance looked. Reason: The aggregate features were created using the historical data file. However,
+when the data_to_predict.json was processed and aggregated features were added, most of the values were 0 which indicated
+that the provided historical data is sparse for the problem at hand. In real world application, Model-2
+might be a better approach where the historical data won't be sparse at market, store, day of week, and hour level.
+
+
+
